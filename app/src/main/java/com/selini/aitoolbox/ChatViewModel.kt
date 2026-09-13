@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.selini.aitoolbox.agent.ToolRegistry
+import com.selini.aitoolbox.data.ChatHistoryStore
 import com.selini.aitoolbox.data.LlmClient
 import com.selini.aitoolbox.data.Provider
 import com.selini.aitoolbox.data.ProviderStore
@@ -32,6 +33,7 @@ sealed class ChatItem {
 class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private val store = ProviderStore(app)
+    private val historyStore = ChatHistoryStore(app)
 
     val items = MutableStateFlow<List<ChatItem>>(emptyList())
     val busy = MutableStateFlow<String?>(null)
@@ -43,6 +45,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val (selected, list) = store.load()
         providers.value = list
         selectedId.value = selected
+        // 先恢复再开始监听：collect 的首个 emission 是当前全量，顺序反了会用空列表覆盖已存文件
+        viewModelScope.launch(Dispatchers.IO) {
+            val restored = historyStore.load()
+            if (restored.isNotEmpty()) items.value = restored
+            items.collect { historyStore.save(it) }
+        }
     }
 
     val selected: Provider?

@@ -71,7 +71,7 @@ tools/*（10 个工具实现）         data/ProviderStore（供应商配置持�
 * **C1 依赖方向**：§2 的箭头只能向下。UI 可整体丢弃重写，上层永远不知道下层的实现细节。
 * **C2 工具协议**：每个工具 = 一个 `ToolDef`（给 AI 的 `name`/`desc`/`params` + 给 UI 的 `title`/`emoji`/`summary`/`example` + 执行函数）。执行结果**必须**是带 `"ok"` 字段的 JSON；`ok=false` 时错误信息会原样回传给模型让它自纠参数重试。新工具不许弹 toast、不许直接改 UI。
 * **C3 网络唯一出口**：所有 HTTP 只发生在 `data/LlmClient`。任何层不得私自发请求（包括工具——现阶段工具全部纯本地）。
-* **C4 Agent 循环**：上限 6 轮（`MAX_ROUNDS`）；`tool_calls` 必须与 `role=tool` 消息按 `tool_call_id` 配对回传；重建历史时只带 user/assistant 文本（工具轮次不持久化，这是已知取舍）。失败兜底：任何异常转成聊天气泡里的可读中文，App 不崩。
+* **C4 Agent 循环**：上限 6 轮（`MAX_ROUNDS`）；`tool_calls` 必须与 `role=tool` 消息按 `tool_call_id` 配对回传；重建历史时只带 user/assistant 文本（发给模型时工具轮次不带；展示层持久化见 §6）。失败兜底：任何异常转成聊天气泡里的可读中文，App 不崩。
 * **C5 供应商协议**：一切供应商按 OpenAI 兼容处理——`{base}/chat/completions` + `{base}/models`。`/models` 不存在的服务商允许手动填模型名。模型名以拉取到的列表为准，**不许硬编码预填过时模型**（v0.1 踩过：deepseek-chat 已退役）。
 * **C6 密钥边界**：API Key 只存本机 SharedPreferences，不进仓库、不进日志、不上传。
 * **C7 UI 数据供给**：UI 只消费 ViewModel 暴露的 `StateFlow`（items/busy/draft/providers/selectedId），单向流；UI 不持有业务状态。
@@ -96,13 +96,12 @@ tools/*（10 个工具实现）         data/ProviderStore（供应商配置持�
 ## §6 数据与存储
 
 * SharedPreferences `"providers"`：`{"selected": id, "providers": [{id,name,baseUrl,apiKey,model}…]}`。
-* 聊天记录：仅内存，进程死即失（v0.1 已知取舍，见 §7）。
+* 聊天记录：文件持久化 `filesDir/chat_history.json`（`data/ChatHistoryStore.kt`，JSON 全量重写 + 临时文件原子替换），进程重启自动恢复。只存展示层：User/Assistant/Failure 全字段；ToolCall 存 emoji/title/args/result，result 内 `image_base64` 剔除——**二维码图片不随进程恢复**（新取舍）。上限最近 200 条，超出截掉最旧。发给模型的历史仍只带 user/assistant 文本（C4）。
 * 权限：`INTERNET`；另有 `WRITE_EXTERNAL_STORAGE`（`maxSdkVersion=28`，仅 Android 9 及以下在点「保存到相册」时运行时申请；Android 10+ 走 MediaStore 免权限）。「分享」经 FileProvider 暴露缓存目录文件，无权限。10 个工具本身仍全部零权限。
 
 ## §7 已知债务与开放清单（◆ 未裁决 / 未开工）
 
 * ◆ Markdown 渲染（AI 回复里的 `**粗体**` 现在原样显示）→ 归入 UI 重做。
-* ◆ 聊天记录持久化（SQLite/文件）与跨进程恢复。
 * ◆ 流式输出（SSE）与「停止生成」按钮。
 * ◆ 二维码识别（要相机/相册权限，第一个带权限的工具，需先立权限纪律）。
 * ◆ 外部数据类工具（天气/快递/汇率）：第一个带第三方 key 的工具，会冲击 C3 的表述，动工前先改契约。
@@ -111,7 +110,7 @@ tools/*（10 个工具实现）         data/ProviderStore（供应商配置持�
 
 ## §8 诚实两栏（与仓库保持一致，里程碑时更新）
 
-* **已实现（2026-09-13）**：多供应商配置（URL+Key+拉取模型列表+点选）、10 个本地工具、function calling 循环（自纠重试、6 轮上限）、二维码聊天内嵌、错误中文兜底、模拟器端到端验证（deepseek-flash）、聊天空状态引导、二维码保存/分享、工具直接操作页（表单按 ToolDef 自动生成，不经过 AI）。
+* **已实现（2026-09-13）**：多供应商配置（URL+Key+拉取模型列表+点选）、10 个本地工具、function calling 循环（自纠重试、6 轮上限）、二维码聊天内嵌、错误中文兜底、模拟器端到端验证（deepseek-flash）、聊天空状态引导、二维码保存/分享、工具直接操作页（表单按 ToolDef 自动生成，不经过 AI）、聊天记录文件持久化（杀进程自动恢复，200 条上限；ToolCall 结果图不跨进程）。
 * **未实现**：§7 全部。
 
 ---
@@ -122,3 +121,4 @@ tools/*（10 个工具实现）         data/ProviderStore（供应商配置持�
 * v0.1.0 修订（2026-09-13 晚）：项目文件曾被工作区意外清理，全量恢复（内容不变），并在 `D:\dev\aitoolbox-backup` 留安全副本。
 * v0.1.0 修订（2026-09-13 晚，之二）：聊天空状态首次引导（一句人话 + 3 个示例入口，点按填草稿不代发）；二维码卡片就地「保存到相册 / 分享」；§6 权限清单同步。依据 `docs/UI-UX-设计原则-草案.md` 第二节「待做」。
 * v0.1.0 修订（2026-09-13 晚，之三）：双模式落地——点工具箱卡片从「把示例填进聊天草稿」改为「打开直接操作页」（ToolRunScreen，参数表单按 ToolDef.params 自动生成；图片结果复用 ImageActions）；AI 路径保留在聊天入口与页内「让 AI 来」兜底。§7 移除「工具直接操作页」◆；§2 登记 ui→ToolRegistry 例外。
+* v0.1.0 修订（2026-09-13 晚，之四）：聊天记录持久化——新增 `data/ChatHistoryStore.kt` 写 `filesDir/chat_history.json`（临时文件原子替换，损坏/缺失按空处理），init 恢复 + `items` 单点监听全量重写（IO 线程），上限 200 条；ToolCall 的 result 剔除 `image_base64`，二维码图片不随进程恢复（新取舍）。§6 改写、§7 移除「聊天记录持久化」◆、§8 已实现补充、§4 C4 括号措辞澄清（规则未动）。
