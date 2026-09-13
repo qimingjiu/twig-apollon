@@ -195,10 +195,17 @@ private fun ParamCaption(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+/** caption 后缀三态：必填 / 有 default 可留空 / 无 default 的选填 */
+private fun captionSuffix(p: ToolParam): String = when {
+    p.required -> "（必填）"
+    p.default != null -> "（留空用默认值）"
+    else -> "（选填）"
+}
+
 @Composable
 private fun TextParamField(p: ToolParam, value: String, onChange: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        ParamCaption(p.desc + if (p.required) "（必填）" else "（留空用默认值）")
+        ParamCaption(p.desc + captionSuffix(p))
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
@@ -217,7 +224,7 @@ private fun TextParamField(p: ToolParam, value: String, onChange: (String) -> Un
 @Composable
 private fun EnumParamField(p: ToolParam, selected: String?, onSelect: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        ParamCaption(p.desc + if (p.required) "（必选）" else "")
+        ParamCaption(p.desc + captionSuffix(p))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             p.enum.orEmpty().forEach { option ->
                 PickChip(option, selected == option) { onSelect(option) }

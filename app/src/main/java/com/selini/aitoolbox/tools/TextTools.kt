@@ -30,6 +30,7 @@ object TextTools {
             ToolParam("include_symbols", "boolean", "是否包含符号 !@#$%^&*-_+=?，默认 true", default = "true"),
             ToolParam("exclude_ambiguous", "boolean", "是否排除易混淆字符 0O1lI，默认 false", default = "false"),
         ),
+        category = "生成与图像",
     ) { args, _ ->
         val length = args.optInt("length", 16).coerceIn(4, 64)
         val count = args.optInt("count", 1).coerceIn(1, 10)
@@ -70,6 +71,7 @@ object TextTools {
                 listOf("base64_encode", "base64_decode", "url_encode", "url_decode", "md5", "sha1", "sha256"),
             ),
         ),
+        category = "文本与编码",
     ) { args, _ ->
         val text = args.getString("text")
         val method = args.getString("method")
@@ -101,6 +103,7 @@ object TextTools {
             ToolParam("text", "string", "JSON 字符串", true),
             ToolParam("indent", "integer", "缩进空格数，默认 2，0 表示压缩成一行", default = "2"),
         ),
+        category = "文本与编码",
     ) { args, _ ->
         val text = args.getString("text").trim()
         val indent = args.optInt("indent", 2).coerceIn(0, 8)
@@ -122,6 +125,7 @@ object TextTools {
         params = listOf(
             ToolParam("amount", "number", "金额（元）", true),
         ),
+        category = "文本与编码",
     ) { args, _ ->
         val amount = args.getDouble("amount")
         require(amount >= 0.0 && amount < 1e12) { "金额需在 0 ~ 1 万亿之间" }

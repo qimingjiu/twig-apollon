@@ -103,6 +103,7 @@ object NumberTools {
             ToolParam("from", "string", "原单位，如 米、kg、℃", true),
             ToolParam("to", "string", "目标单位", true),
         ),
+        category = "数字与计算",
     ) { args, _ ->
         val value = args.getDouble("value")
         val from = resolve(args.getString("from"))
@@ -133,6 +134,7 @@ object NumberTools {
             ToolParam("from_base", "integer", "原进制，2~36，默认 10", default = "10"),
             ToolParam("to_base", "integer", "目标进制，2~36，默认 16", default = "16"),
         ),
+        category = "数字与计算",
     ) { args, _ ->
         val fromBase = args.optInt("from_base", 10)
         val toBase = args.optInt("to_base", 16)
@@ -166,6 +168,7 @@ object NumberTools {
             ToolParam("count", "integer", "生成个数，默认 1，最多 100", default = "1"),
             ToolParam("unique", "boolean", "是否不允许重复，默认 false", default = "false"),
         ),
+        category = "数字与计算",
     ) { args, _ ->
         val min = args.optInt("min", 1)
         val max = args.optInt("max", 100)

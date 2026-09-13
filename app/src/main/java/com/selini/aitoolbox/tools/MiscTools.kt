@@ -32,6 +32,7 @@ object MiscTools {
             ToolParam("text", "string", "二维码内容（链接或文本）", true),
             ToolParam("size", "integer", "图片边长（像素），默认 512，范围 128~1024", default = "512"),
         ),
+        category = "生成与图像",
     ) { args, _ ->
         val text = args.getString("text")
         val size = args.optInt("size", 512).coerceIn(128, 1024)
@@ -94,6 +95,7 @@ object MiscTools {
             ToolParam("date2", "string", "第二个日期，days_between 时必填"),
             ToolParam("days", "integer", "加减的天数，add_days 时使用，可为负数"),
         ),
+        category = "数字与计算",
     ) { args, _ ->
         val op = args.getString("operation")
         val out = JSONObject().put("ok", true).put("operation", op)
@@ -129,6 +131,7 @@ object MiscTools {
         example = "看看我的手机是什么型号、电量还剩多少",
         desc = "获取本机设备信息：品牌、型号、系统版本、屏幕分辨率与密度、CPU 架构与核数、电池电量。无参数。",
         params = listOf(),
+        category = "设备与系统",
     ) { _, ctx ->
         val app = ctx.applicationContext
         val dm = app.resources.displayMetrics

@@ -30,6 +30,8 @@ class ToolDef(
     val example: String,
     val desc: String,
     val params: List<ToolParam>,
+    /** 仅 UI 分组用（书架书脊），不进 AI Schema。须在 run 之前：尾随 lambda 只能绑定最后一个参数 */
+    val category: String = "其他",
     val run: (args: JSONObject, context: Context) -> JSONObject,
 )
 

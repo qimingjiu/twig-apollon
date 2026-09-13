@@ -70,7 +70,7 @@ tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistorySto
 ## §4 契约（破坏任何一条之前，先改本节）
 
 * **C1 依赖方向**：§2 的箭头只能向下。UI 可整体丢弃重写，上层永远不知道下层的实现细节。
-* **C2 工具协议**：每个工具 = 一个 `ToolDef`（给 AI 的 `name`/`desc`/`params` + 给 UI 的 `title`/`emoji`/`summary`/`example` + 执行函数）。执行结果**必须**是带 `"ok"` 字段的 JSON；`ok=false` 时错误信息会原样回传给模型让它自纠参数重试。新工具不许弹 toast、不许直接改 UI。ToolParam.default 仅供 UI 预填（不进 AI Schema）；工具内部默认值仍是最终裁决，改动工具默认值时须同步 default。
+* **C2 工具协议**：每个工具 = 一个 `ToolDef`（给 AI 的 `name`/`desc`/`params` + 给 UI 的 `title`/`emoji`/`summary`/`example` + 执行函数）。执行结果**必须**是带 `"ok"` 字段的 JSON；`ok=false` 时错误信息会原样回传给模型让它自纠参数重试。新工具不许弹 toast、不许直接改 UI。ToolParam.default 仅供 UI 预填（不进 AI Schema）；工具内部默认值仍是最终裁决，改动工具默认值时须同步 default。ToolDef.category 仅供 UI 分组（不进 AI Schema）。
 * **C3 网络唯一出口**：所有 HTTP 只发生在 `data/LlmClient`。任何层不得私自发请求（包括工具——现阶段工具全部纯本地）。
 * **C4 Agent 循环**：上限 6 轮（`MAX_ROUNDS`）；`tool_calls` 必须与 `role=tool` 消息按 `tool_call_id` 配对回传；重建历史时只带 user/assistant 文本（发给模型时工具轮次不带；展示层持久化见 §6）。失败兜底：任何异常转成聊天气泡里的可读中文，App 不崩。
 * **C5 供应商协议**：一切供应商按 OpenAI 兼容处理——`{base}/chat/completions` + `{base}/models`。`/models` 不存在的服务商允许手动填模型名。模型名以拉取到的列表为准，**不许硬编码预填过时模型**（v0.1 踩过：deepseek-chat 已退役）。
@@ -79,18 +79,18 @@ tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistorySto
 
 ## §5 工具清单（v0.1.0 = 10 个）
 
-| name | 文件 | 一句话 |
-|---|---|---|
-| generate_password | TextTools.kt | 密码学安全随机密码，可控字符类与长度 |
-| encode_decode | TextTools.kt | Base64/URL 编解码，MD5/SHA1/SHA256 摘要 |
-| format_json | TextTools.kt | JSON 校验 + 缩进美化 |
-| amount_to_chinese | TextTools.kt | 金额转人民币大写（0~1万亿） |
-| convert_unit | NumberTools.kt | 长度/重量/温度/数据/速度/面积，中英文单位 |
-| convert_base | NumberTools.kt | 2~36 任意进制整数转换 |
-| random_number | NumberTools.kt | 范围随机整数，可去重（骰子/抽签） |
-| generate_qr_code | MiscTools.kt | 文本→二维码 PNG，聊天内嵌显示（`image_base64` 约定） |
-| date_calc | MiscTools.kt | 今天/加减天数/日期间隔/星期几 |
-| get_device_info | MiscTools.kt | 品牌/型号/系统/屏幕/CPU/电量（无权限） |
+| name | 文件 | 分类 | 一句话 |
+|---|---|---|---|
+| generate_password | TextTools.kt | 生成与图像 | 密码学安全随机密码，可控字符类与长度 |
+| encode_decode | TextTools.kt | 文本与编码 | Base64/URL 编解码，MD5/SHA1/SHA256 摘要 |
+| format_json | TextTools.kt | 文本与编码 | JSON 校验 + 缩进美化 |
+| amount_to_chinese | TextTools.kt | 文本与编码 | 金额转人民币大写（0~1万亿） |
+| convert_unit | NumberTools.kt | 数字与计算 | 长度/重量/温度/数据/速度/面积，中英文单位 |
+| convert_base | NumberTools.kt | 数字与计算 | 2~36 任意进制整数转换 |
+| random_number | NumberTools.kt | 数字与计算 | 范围随机整数，可去重（骰子/抽签） |
+| generate_qr_code | MiscTools.kt | 生成与图像 | 文本→二维码 PNG，聊天内嵌显示（`image_base64` 约定） |
+| date_calc | MiscTools.kt | 数字与计算 | 今天/加减天数/日期间隔/星期几 |
+| get_device_info | MiscTools.kt | 设备与系统 | 品牌/型号/系统/屏幕/CPU/电量（无权限） |
 
 加工具流程：写 `ToolDef` → 进 `all` → 跑通 → 在本表加一行。完事。
 
@@ -129,3 +129,4 @@ tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistorySto
 * v0.1.0 修订（2026-09-13 晚，之七）：修复流式输出时长回复不跟随滚动——滚动 `LaunchedEffect` 的 key 由（条数、busy）扩展为（条数、busy、末条文本长度）；且末条高于视口时 `animateScrollToItem` 的顶对齐会让最新内容留在屏外，追加一段 `animateScrollBy` 把末条底部贴住视口底（短消息 gap ≤ 0 不触发，原行为不变）。空状态引导不动。
 * v0.1.0 修订（2026-09-13 晚，之八）：`ToolParam` 增加 `default` 元数据（尾参可选，boolean 用 "true"/"false"），10 个工具按内部实际默认值标齐（布尔 6 个、数值/文本 10 处）；直接操作页据此预填输入框、布尔三态 chips 改为 Switch（预填值随运行提交，与工具内部默认一致；用户清空非必填框仍走「留空用默认值」）。`openAiSchemas()` 不动，default 不进 AI Schema。§4 C2 补充元数据边界。
 * v0.1.0 修订（2026-09-13 晚，之九）：date_calc 的 days 去掉预填（default = "0" 移除）——条件使用的参数不预填更顺手，留空仍由工具内部默认接管。§7 补录用户已确认缓行的两个方向：系统控制类工具组（免权限已核实，注意手电筒两个系统行为）与 MCP server 模式（官方 Kotlin SDK 可用，难点在 Android 常驻服务/鉴权/局域网可达性，动工前单独立项）。
+* v0.1.0 修订（2026-09-13 晚，之十）：工具箱改造为「书架」形态 v1（静态版）——`ToolDef` 增加 `category` 元数据（尾参默认「其他」，不进 AI Schema），四类：文本与编码/数字与计算/生成与图像/设备与系统；工具箱从双列卡片改为书架：收拢态每行一条书脊（深色纯色、分类名竖排、底部分类色圆章）下垫层板，点书脊在右侧展开该分类胶囊（round-robin 三行横向滚动，点击直达工具页），同时仅一层展开、再点收拢，`animateContentSize` 平滑；ToolRunScreen 的 caption 后缀改按 required/default 三态（必填/留空用默认值/选填）。§4 C2、§5 同步。
