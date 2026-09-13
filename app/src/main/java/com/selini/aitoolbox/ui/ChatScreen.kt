@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,9 +50,25 @@ fun ChatScreen(vm: ChatViewModel) {
         ?.let { it.apiKey.isNotBlank() && it.model.isNotBlank() } == true
     val listState = rememberLazyListState()
 
-    LaunchedEffect(items.size, busy != null) {
-        val target = if (busy != null) items.size else items.size - 1
-        if (target >= 0) listState.animateScrollToItem(target)
+    // 流式是就地更新末条（size 不变），第三个 key 盯末条文本长度才能在增长期间持续跟随
+    val lastTextLength = when (val last = items.lastOrNull()) {
+        is ChatItem.Assistant -> last.text.length
+        is ChatItem.User -> last.text.length
+        else -> 0
+    }
+
+    LaunchedEffect(items.size, busy != null, lastTextLength) {
+        if (items.isEmpty()) return@LaunchedEffect
+        val lastIndex = items.size - 1
+        listState.animateScrollToItem(lastIndex)
+        // 末条高于视口时 animateScrollToItem 只会把它的顶部对齐视口顶，最新内容留在屏外；
+        // 补一段滚动让末条底部贴住视口底。短消息时 gap ≤ 0 不触发，原行为不变。
+        val info = listState.layoutInfo
+        val lastInfo = info.visibleItemsInfo.lastOrNull() ?: return@LaunchedEffect
+        if (lastInfo.index == lastIndex) {
+            val gap = lastInfo.offset + lastInfo.size - info.viewportEndOffset
+            if (gap > 0) listState.animateScrollBy(gap.toFloat())
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().imePadding()) {
