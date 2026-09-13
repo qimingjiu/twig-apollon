@@ -107,6 +107,8 @@ tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistorySto
 * ◆ 外部数据类工具（天气/快递/汇率）：第一个带第三方 key 的工具，会冲击 C3 的表述，动工前先改契约。
 * ◆ Anthropic 协议 adapter（Claude 系端点）。
 * ◆ 真机发行：签名配置、应用图标、minSdk 复核（当前 26）。
+* ◆ 系统控制类工具组（手电筒/音量/指南针等传感器读取）：已核实免权限，用户已确认想要但缓行；动工前注意手电筒「App 退出灯灭」「相机被占用失败」两个系统行为。
+* ◆ MCP server 模式（手机工具暴露给桌面 AI 调用）：用户已确认想要但缓行；官方有 Kotlin SDK（modelcontextprotocol/kotlin-sdk），难点不在协议在 Android 常驻服务、鉴权与局域网可达性；动工前需单独立项设计。
 
 ## §8 诚实两栏（与仓库保持一致，里程碑时更新）
 
@@ -126,3 +128,4 @@ tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistorySto
 * v0.1.0 修订（2026-09-13 晚，之六）：设置页新增「清空聊天记录」——AlertDialog 说明不可恢复，确认后 `ChatViewModel.clearHistory()` 置空 items，持久化文件由既有单点监听同步覆盖；设置页条目下给「已清空」情境内反馈。§6 聊天记录行补「设置页可清空」。
 * v0.1.0 修订（2026-09-13 晚，之七）：修复流式输出时长回复不跟随滚动——滚动 `LaunchedEffect` 的 key 由（条数、busy）扩展为（条数、busy、末条文本长度）；且末条高于视口时 `animateScrollToItem` 的顶对齐会让最新内容留在屏外，追加一段 `animateScrollBy` 把末条底部贴住视口底（短消息 gap ≤ 0 不触发，原行为不变）。空状态引导不动。
 * v0.1.0 修订（2026-09-13 晚，之八）：`ToolParam` 增加 `default` 元数据（尾参可选，boolean 用 "true"/"false"），10 个工具按内部实际默认值标齐（布尔 6 个、数值/文本 10 处）；直接操作页据此预填输入框、布尔三态 chips 改为 Switch（预填值随运行提交，与工具内部默认一致；用户清空非必填框仍走「留空用默认值」）。`openAiSchemas()` 不动，default 不进 AI Schema。§4 C2 补充元数据边界。
+* v0.1.0 修订（2026-09-13 晚，之九）：date_calc 的 days 去掉预填（default = "0" 移除）——条件使用的参数不预填更顺手，留空仍由工具内部默认接管。§7 补录用户已确认缓行的两个方向：系统控制类工具组（免权限已核实，注意手电筒两个系统行为）与 MCP server 模式（官方 Kotlin SDK 可用，难点在 Android 常驻服务/鉴权/局域网可达性，动工前单独立项）。
