@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,6 +57,7 @@ fun SettingsScreen(vm: ChatViewModel) {
                 isNew = true
             },
             onDelete = { vm.deleteProvider(it.id) },
+            onClearHistory = { vm.clearHistory() },
         )
     } else {
         ProviderEditor(
@@ -76,7 +78,10 @@ private fun ProviderList(
     onEdit: (Provider) -> Unit,
     onAdd: () -> Unit,
     onDelete: (Provider) -> Unit,
+    onClearHistory: () -> Unit,
 ) {
+    var showClearDialog by remember { mutableStateOf(false) }
+    var cleared by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -120,6 +125,36 @@ private fun ProviderList(
                 "火山方舟可填推理接入点 ep-xxx，中转站（one-api / new-api）直接填它们的地址。" +
                 "点击卡片编辑，✓ 表示当前聊天使用的供应商。",
             style = MaterialTheme.typography.bodySmall,
+        )
+        Text("聊天记录", style = MaterialTheme.typography.titleMedium)
+        OutlinedButton(onClick = { showClearDialog = true }) { Text("清空聊天记录") }
+        if (cleared) {
+            Text(
+                "已清空",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Text(
+            "聊天记录只保存在本机（最近 200 条），清空后不可恢复。",
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("清空聊天记录？") },
+            text = { Text("所有聊天记录将从本机永久删除，此操作不可恢复。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onClearHistory()
+                    cleared = true
+                    showClearDialog = false
+                }) { Text("清空") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) { Text("取消") }
+            },
         )
     }
 }

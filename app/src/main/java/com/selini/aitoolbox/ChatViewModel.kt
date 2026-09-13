@@ -133,6 +133,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** 清空聊天记录：UI 置空即可，持久化文件由既有 items 单点监听同步覆盖 */
+    fun clearHistory() {
+        items.value = emptyList()
+    }
+
     /** function calling 循环：模型要工具就执行，把结果喂回去，直到给出最终回答 */
     private suspend fun runAgent() = withContext(Dispatchers.IO) {
         val p = selected ?: return@withContext

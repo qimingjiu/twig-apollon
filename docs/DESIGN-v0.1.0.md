@@ -97,7 +97,7 @@ tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistorySto
 ## §6 数据与存储
 
 * SharedPreferences `"providers"`：`{"selected": id, "providers": [{id,name,baseUrl,apiKey,model}…]}`。
-* 聊天记录：文件持久化 `filesDir/chat_history.json`（`data/ChatHistoryStore.kt`，JSON 全量重写 + 临时文件原子替换），进程重启自动恢复。只存展示层：User/Assistant/Failure 全字段；ToolCall 存 emoji/title/args/result，result 内 `image_base64` 剔除——**二维码图片不随进程恢复**（新取舍）。上限最近 200 条，超出截掉最旧。发给模型的历史仍只带 user/assistant 文本（C4）。
+* 聊天记录：文件持久化 `filesDir/chat_history.json`（`data/ChatHistoryStore.kt`，JSON 全量重写 + 临时文件原子替换），进程重启自动恢复。只存展示层：User/Assistant/Failure 全字段；ToolCall 存 emoji/title/args/result，result 内 `image_base64` 剔除——**二维码图片不随进程恢复**（新取舍）。上限最近 200 条，超出截掉最旧。发给模型的历史仍只带 user/assistant 文本（C4）。设置页可清空。
 * 权限：`INTERNET`；另有 `WRITE_EXTERNAL_STORAGE`（`maxSdkVersion=28`，仅 Android 9 及以下在点「保存到相册」时运行时申请；Android 10+ 走 MediaStore 免权限）。「分享」经 FileProvider 暴露缓存目录文件，无权限。10 个工具本身仍全部零权限。
 
 ## §7 已知债务与开放清单（◆ 未裁决 / 未开工）
@@ -123,3 +123,4 @@ tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistorySto
 * v0.1.0 修订（2026-09-13 晚，之三）：双模式落地——点工具箱卡片从「把示例填进聊天草稿」改为「打开直接操作页」（ToolRunScreen，参数表单按 ToolDef.params 自动生成；图片结果复用 ImageActions）；AI 路径保留在聊天入口与页内「让 AI 来」兜底。§7 移除「工具直接操作页」◆；§2 登记 ui→ToolRegistry 例外。
 * v0.1.0 修订（2026-09-13 晚，之四）：聊天记录持久化——新增 `data/ChatHistoryStore.kt` 写 `filesDir/chat_history.json`（临时文件原子替换，损坏/缺失按空处理），init 恢复 + `items` 单点监听全量重写（IO 线程），上限 200 条；ToolCall 的 result 剔除 `image_base64`，二维码图片不随进程恢复（新取舍）。§6 改写、§7 移除「聊天记录持久化」◆、§8 已实现补充、§4 C4 括号措辞澄清（规则未动）。
 * v0.1.0 修订（2026-09-13 晚，之五）：SSE 流式输出——`LlmClient.chatStream`（`stream:true`、逐行 `data:`/`[DONE]` 解析、tool_calls 增量按 index 合并 arguments），Agent 循环改走流式：首个 content delta 即上屏并就地更新，工具轮内容不上屏、完整 tool_calls 走原执行路径（MAX_ROUNDS 与 tool_call_id 配对不变）。「停止生成」：ViewModel 持有 Job+OkHttp Call，`stop()` 双重取消，已流出文本保留并追加「（已停止）」，busy 复位。发送按钮在忙时切换为「停止」。§1 移除已完成三项（持久化/流式/取消）、§2 补 ChatHistoryStore、§7 移除对应 ◆。
+* v0.1.0 修订（2026-09-13 晚，之六）：设置页新增「清空聊天记录」——AlertDialog 说明不可恢复，确认后 `ChatViewModel.clearHistory()` 置空 items，持久化文件由既有单点监听同步覆盖；设置页条目下给「已清空」情境内反馈。§6 聊天记录行补「设置页可清空」。
