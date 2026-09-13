@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -26,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -61,8 +63,21 @@ fun ToolRunScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val texts = remember(tool.name) { mutableStateMapOf<String, String>() }
-    val bools = remember(tool.name) { mutableStateMapOf<String, Boolean?>() }
+    // 非布尔参数按 default 预填（无 default 留空），布尔按 default 解析出初始态——三态 chips 已消灭
+    val texts = remember(tool.name) {
+        mutableStateMapOf<String, String>().apply {
+            tool.params.filter { it.type != "boolean" }.forEach { p ->
+                p.default?.let { put(p.name, it) }
+            }
+        }
+    }
+    val bools = remember(tool.name) {
+        mutableStateMapOf<String, Boolean>().apply {
+            tool.params.filter { it.type == "boolean" }.forEach { p ->
+                put(p.name, p.default == "true")
+            }
+        }
+    }
     var running by remember(tool.name) { mutableStateOf(false) }
     var result by remember(tool.name) { mutableStateOf<JSONObject?>(null) }
     var inputError by remember(tool.name) { mutableStateOf<String?>(null) }
@@ -125,7 +140,7 @@ fun ToolRunScreen(
 
         tool.params.forEach { p ->
             when {
-                p.type == "boolean" -> BoolParamField(p, bools[p.name]) { bools[p.name] = it }
+                p.type == "boolean" -> BoolParamField(p, bools[p.name] ?: false) { bools[p.name] = it }
                 p.enum != null -> EnumParamField(p, texts[p.name]) { texts[p.name] = it }
                 else -> TextParamField(p, texts[p.name].orEmpty()) { texts[p.name] = it }
             }
@@ -171,11 +186,12 @@ fun ToolRunScreen(
 }
 
 @Composable
-private fun ParamCaption(text: String) {
+private fun ParamCaption(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
     )
 }
 
@@ -210,16 +226,14 @@ private fun EnumParamField(p: ToolParam, selected: String?, onSelect: (String) -
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BoolParamField(p: ToolParam, value: Boolean?, onSelect: (Boolean?) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        ParamCaption(p.desc)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(null to "跟随默认", true to "开", false to "关").forEach { (v, label) ->
-                PickChip(label, value == v) { onSelect(v) }
-            }
-        }
+private fun BoolParamField(p: ToolParam, value: Boolean, onSelect: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        ParamCaption(p.desc, modifier = Modifier.weight(1f))
+        Switch(checked = value, onCheckedChange = onSelect)
     }
 }
 

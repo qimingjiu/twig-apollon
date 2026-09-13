@@ -70,7 +70,7 @@ tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistorySto
 ## §4 契约（破坏任何一条之前，先改本节）
 
 * **C1 依赖方向**：§2 的箭头只能向下。UI 可整体丢弃重写，上层永远不知道下层的实现细节。
-* **C2 工具协议**：每个工具 = 一个 `ToolDef`（给 AI 的 `name`/`desc`/`params` + 给 UI 的 `title`/`emoji`/`summary`/`example` + 执行函数）。执行结果**必须**是带 `"ok"` 字段的 JSON；`ok=false` 时错误信息会原样回传给模型让它自纠参数重试。新工具不许弹 toast、不许直接改 UI。
+* **C2 工具协议**：每个工具 = 一个 `ToolDef`（给 AI 的 `name`/`desc`/`params` + 给 UI 的 `title`/`emoji`/`summary`/`example` + 执行函数）。执行结果**必须**是带 `"ok"` 字段的 JSON；`ok=false` 时错误信息会原样回传给模型让它自纠参数重试。新工具不许弹 toast、不许直接改 UI。ToolParam.default 仅供 UI 预填（不进 AI Schema）；工具内部默认值仍是最终裁决，改动工具默认值时须同步 default。
 * **C3 网络唯一出口**：所有 HTTP 只发生在 `data/LlmClient`。任何层不得私自发请求（包括工具——现阶段工具全部纯本地）。
 * **C4 Agent 循环**：上限 6 轮（`MAX_ROUNDS`）；`tool_calls` 必须与 `role=tool` 消息按 `tool_call_id` 配对回传；重建历史时只带 user/assistant 文本（发给模型时工具轮次不带；展示层持久化见 §6）。失败兜底：任何异常转成聊天气泡里的可读中文，App 不崩。
 * **C5 供应商协议**：一切供应商按 OpenAI 兼容处理——`{base}/chat/completions` + `{base}/models`。`/models` 不存在的服务商允许手动填模型名。模型名以拉取到的列表为准，**不许硬编码预填过时模型**（v0.1 踩过：deepseek-chat 已退役）。
@@ -125,3 +125,4 @@ tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistorySto
 * v0.1.0 修订（2026-09-13 晚，之五）：SSE 流式输出——`LlmClient.chatStream`（`stream:true`、逐行 `data:`/`[DONE]` 解析、tool_calls 增量按 index 合并 arguments），Agent 循环改走流式：首个 content delta 即上屏并就地更新，工具轮内容不上屏、完整 tool_calls 走原执行路径（MAX_ROUNDS 与 tool_call_id 配对不变）。「停止生成」：ViewModel 持有 Job+OkHttp Call，`stop()` 双重取消，已流出文本保留并追加「（已停止）」，busy 复位。发送按钮在忙时切换为「停止」。§1 移除已完成三项（持久化/流式/取消）、§2 补 ChatHistoryStore、§7 移除对应 ◆。
 * v0.1.0 修订（2026-09-13 晚，之六）：设置页新增「清空聊天记录」——AlertDialog 说明不可恢复，确认后 `ChatViewModel.clearHistory()` 置空 items，持久化文件由既有单点监听同步覆盖；设置页条目下给「已清空」情境内反馈。§6 聊天记录行补「设置页可清空」。
 * v0.1.0 修订（2026-09-13 晚，之七）：修复流式输出时长回复不跟随滚动——滚动 `LaunchedEffect` 的 key 由（条数、busy）扩展为（条数、busy、末条文本长度）；且末条高于视口时 `animateScrollToItem` 的顶对齐会让最新内容留在屏外，追加一段 `animateScrollBy` 把末条底部贴住视口底（短消息 gap ≤ 0 不触发，原行为不变）。空状态引导不动。
+* v0.1.0 修订（2026-09-13 晚，之八）：`ToolParam` 增加 `default` 元数据（尾参可选，boolean 用 "true"/"false"），10 个工具按内部实际默认值标齐（布尔 6 个、数值/文本 10 处）；直接操作页据此预填输入框、布尔三态 chips 改为 Switch（预填值随运行提交，与工具内部默认一致；用户清空非必填框仍走「留空用默认值」）。`openAiSchemas()` 不动，default 不进 AI Schema。§4 C2 补充元数据边界。

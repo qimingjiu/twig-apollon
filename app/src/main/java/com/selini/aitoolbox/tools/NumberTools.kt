@@ -130,8 +130,8 @@ object NumberTools {
         desc = "在 2~36 进制之间转换整数。",
         params = listOf(
             ToolParam("number", "string", "数字（字符串形式，不带 0x 之类前缀）", true),
-            ToolParam("from_base", "integer", "原进制，2~36，默认 10"),
-            ToolParam("to_base", "integer", "目标进制，2~36，默认 16"),
+            ToolParam("from_base", "integer", "原进制，2~36，默认 10", default = "10"),
+            ToolParam("to_base", "integer", "目标进制，2~36，默认 16", default = "16"),
         ),
     ) { args, _ ->
         val fromBase = args.optInt("from_base", 10)
@@ -161,10 +161,10 @@ object NumberTools {
         example = "掷一个六面骰子",
         desc = "生成一个或多个范围内的随机整数（含两端），可用于掷骰子、抽奖、抽签。",
         params = listOf(
-            ToolParam("min", "integer", "最小值（含），默认 1"),
-            ToolParam("max", "integer", "最大值（含），默认 100"),
-            ToolParam("count", "integer", "生成个数，默认 1，最多 100"),
-            ToolParam("unique", "boolean", "是否不允许重复，默认 false"),
+            ToolParam("min", "integer", "最小值（含），默认 1", default = "1"),
+            ToolParam("max", "integer", "最大值（含），默认 100", default = "100"),
+            ToolParam("count", "integer", "生成个数，默认 1，最多 100", default = "1"),
+            ToolParam("unique", "boolean", "是否不允许重复，默认 false", default = "false"),
         ),
     ) { args, _ ->
         val min = args.optInt("min", 1)

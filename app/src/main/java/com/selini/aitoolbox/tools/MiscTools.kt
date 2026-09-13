@@ -30,7 +30,7 @@ object MiscTools {
         desc = "把一段文本或链接生成为二维码图片，图片会直接显示在聊天里。适合分享网址、WiFi 信息、短语等。",
         params = listOf(
             ToolParam("text", "string", "二维码内容（链接或文本）", true),
-            ToolParam("size", "integer", "图片边长（像素），默认 512，范围 128~1024"),
+            ToolParam("size", "integer", "图片边长（像素），默认 512，范围 128~1024", default = "512"),
         ),
     ) { args, _ ->
         val text = args.getString("text")
@@ -92,7 +92,7 @@ object MiscTools {
             ),
             ToolParam("date", "string", "日期 yyyy-MM-dd（operation=today 时不用传）"),
             ToolParam("date2", "string", "第二个日期，days_between 时必填"),
-            ToolParam("days", "integer", "加减的天数，add_days 时使用，可为负数"),
+            ToolParam("days", "integer", "加减的天数，add_days 时使用，可为负数", default = "0"),
         ),
     ) { args, _ ->
         val op = args.getString("operation")

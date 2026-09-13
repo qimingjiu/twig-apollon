@@ -22,13 +22,13 @@ object TextTools {
         example = "帮我生成一个 20 位、包含符号的强密码",
         desc = "生成一个或多个密码学安全的随机密码。用户想要密码、随机字符串时使用。",
         params = listOf(
-            ToolParam("length", "integer", "密码长度，默认 16，范围 4~64"),
-            ToolParam("count", "integer", "生成个数，默认 1，最多 10"),
-            ToolParam("include_uppercase", "boolean", "是否包含大写字母，默认 true"),
-            ToolParam("include_lowercase", "boolean", "是否包含小写字母，默认 true"),
-            ToolParam("include_digits", "boolean", "是否包含数字，默认 true"),
-            ToolParam("include_symbols", "boolean", "是否包含符号 !@#$%^&*-_+=?，默认 true"),
-            ToolParam("exclude_ambiguous", "boolean", "是否排除易混淆字符 0O1lI，默认 false"),
+            ToolParam("length", "integer", "密码长度，默认 16，范围 4~64", default = "16"),
+            ToolParam("count", "integer", "生成个数，默认 1，最多 10", default = "1"),
+            ToolParam("include_uppercase", "boolean", "是否包含大写字母，默认 true", default = "true"),
+            ToolParam("include_lowercase", "boolean", "是否包含小写字母，默认 true", default = "true"),
+            ToolParam("include_digits", "boolean", "是否包含数字，默认 true", default = "true"),
+            ToolParam("include_symbols", "boolean", "是否包含符号 !@#$%^&*-_+=?，默认 true", default = "true"),
+            ToolParam("exclude_ambiguous", "boolean", "是否排除易混淆字符 0O1lI，默认 false", default = "false"),
         ),
     ) { args, _ ->
         val length = args.optInt("length", 16).coerceIn(4, 64)
@@ -99,7 +99,7 @@ object TextTools {
         desc = "校验 JSON 是否合法并按缩进美化输出。text 参数是 JSON 字符串本身。",
         params = listOf(
             ToolParam("text", "string", "JSON 字符串", true),
-            ToolParam("indent", "integer", "缩进空格数，默认 2，0 表示压缩成一行"),
+            ToolParam("indent", "integer", "缩进空格数，默认 2，0 表示压缩成一行", default = "2"),
         ),
     ) { args, _ ->
         val text = args.getString("text").trim()

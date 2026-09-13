@@ -14,6 +14,8 @@ class ToolParam(
     val desc: String,
     val required: Boolean = false,
     val enum: List<String>? = null,
+    /** 仅 UI 预填用（不进 AI Schema）；须与工具实现内的默认值保持一致，boolean 用 "true"/"false" */
+    val default: String? = null,
 )
 
 /**
