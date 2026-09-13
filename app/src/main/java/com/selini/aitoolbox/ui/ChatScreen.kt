@@ -113,11 +113,18 @@ fun ChatScreen(vm: ChatViewModel) {
                 maxLines = 4,
                 shape = RoundedCornerShape(20.dp),
             )
-            Button(
-                onClick = { vm.send() },
-                enabled = busy == null && draft.isNotBlank(),
-                modifier = Modifier.padding(bottom = 6.dp),
-            ) { Text("发送") }
+            if (busy == null) {
+                Button(
+                    onClick = { vm.send() },
+                    enabled = draft.isNotBlank(),
+                    modifier = Modifier.padding(bottom = 6.dp),
+                ) { Text("发送") }
+            } else {
+                Button(
+                    onClick = { vm.stop() },
+                    modifier = Modifier.padding(bottom = 6.dp),
+                ) { Text("停止") }
+            }
         }
     }
 }

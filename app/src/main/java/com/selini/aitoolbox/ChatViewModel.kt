@@ -8,10 +8,14 @@ import com.selini.aitoolbox.data.ChatHistoryStore
 import com.selini.aitoolbox.data.LlmClient
 import com.selini.aitoolbox.data.Provider
 import com.selini.aitoolbox.data.ProviderStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.Call
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -34,6 +38,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private val store = ProviderStore(app)
     private val historyStore = ChatHistoryStore(app)
+
+    @Volatile private var stopRequested = false
+    private var currentJob: Job? = null
+    private var currentCall: Call? = null
 
     val items = MutableStateFlow<List<ChatItem>>(emptyList())
     val busy = MutableStateFlow<String?>(null)
@@ -92,14 +100,36 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         busy.value = "正在思考…"
-        viewModelScope.launch(Dispatchers.IO) {
+        stopRequested = false
+        currentJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 runAgent()
             } catch (e: Exception) {
-                items.value += ChatItem.Failure(e.message ?: "发生未知错误")
+                when {
+                    stopRequested -> markStopped()
+                    e is CancellationException || !isActive -> { /* 生命周期取消：静默 */ }
+                    else -> items.value += ChatItem.Failure(e.message ?: "发生未知错误")
+                }
             } finally {
                 busy.value = null
+                currentJob = null
+                currentCall = null
             }
+        }
+    }
+
+    /** 停止生成：取消当前 HTTP 请求与协程；已流出的部分回复保留并追加「（已停止）」 */
+    fun stop() {
+        stopRequested = true
+        currentCall?.cancel()
+        currentJob?.cancel()
+    }
+
+    private fun markStopped() {
+        val list = items.value
+        val last = list.lastOrNull()
+        if (last is ChatItem.Assistant && !last.text.endsWith(STOPPED_SUFFIX)) {
+            items.value = list.dropLast(1) + last.copy(text = last.text + STOPPED_SUFFIX)
         }
     }
 
@@ -122,17 +152,37 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
         var answered = false
         for (round in 1..MAX_ROUNDS) {
+            if (stopRequested || !isActive) throw CancellationException()
             busy.value = if (round == 1) "正在思考…" else "正在整理结果…"
-            val resp = LlmClient.chat(p, p.model, messages, ToolRegistry.openAiSchemas())
-            val msg = resp.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
+            var shown = false
+            val streamed = StringBuilder()
+            val msg = LlmClient.chatStream(
+                p, p.model, messages, ToolRegistry.openAiSchemas(),
+                onCall = { currentCall = it },
+                onContentDelta = { delta ->
+                    streamed.append(delta)
+                    if (streamed.isNotBlank()) {
+                        if (!shown) {
+                            shown = true
+                            items.value += ChatItem.Assistant(streamed.toString())
+                        } else {
+                            items.value = items.value.dropLast(1) + ChatItem.Assistant(streamed.toString())
+                        }
+                    }
+                },
+            )
             val calls = msg.optJSONArray("tool_calls")
             if (calls == null || calls.length() == 0) {
-                items.value += ChatItem.Assistant(
-                    msg.optString("content").ifBlank { "（模型没有返回内容，请重试）" }
-                )
+                if (!shown) {
+                    items.value += ChatItem.Assistant(
+                        msg.optString("content").ifBlank { "（模型没有返回内容，请重试）" }
+                    )
+                }
                 answered = true
                 break
             }
+            // 工具轮：本轮 content 不上屏（撤掉流式气泡），完整消息仍按 C4 回传 API
+            if (shown) items.value = items.value.dropLast(1)
             messages.put(msg)
             for (i in 0 until calls.length()) {
                 val call = calls.getJSONObject(i)
@@ -189,5 +239,6 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val MAX_ROUNDS = 6
+        const val STOPPED_SUFFIX = "（已停止）"
     }
 }

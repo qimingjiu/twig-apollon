@@ -28,7 +28,7 @@
 * 单人项目，UI 现阶段是功能脚手架，**后续会整体重做**（用户另行设计）。因此 UI 层的可替换性是硬要求（见 C1/C7）。
 * 本项目**不适用**任何「仅 MIT 依赖」之类铁律；选库只看是否最顺手（当前：OkHttp、Compose、zxing，均 Apache-2.0/BSD 系）。
 
-v0.1.0 明确不做：UI 审美打磨、聊天记录持久化、流式输出、消息取消、相机类工具（二维码识别）、需要第三方 API key 的外部数据工具、非 OpenAI 兼容协议、多语言。
+v0.1.0 明确不做：UI 审美打磨、相机类工具（二维码识别）、需要第三方 API key 的外部数据工具、非 OpenAI 兼容协议、多语言。
 
 ## §2 分层地图
 
@@ -39,7 +39,7 @@ ChatViewModel（Agent 循环 · 会话状态 · 供应商状态）
    ↓                                ↓
 agent/ToolRegistry              data/LlmClient（唯一网络出口）
    ↓                                ↓
-tools/*（10 个工具实现）         data/ProviderStore（供应商配置持久化）
+tools/*（10 个工具实现）         data/ProviderStore + data/ChatHistoryStore（配置/聊天记录持久化）
 ```
 
 | 层 | 位置 | 职责 | 可替换性 |
@@ -50,6 +50,7 @@ tools/*（10 个工具实现）         data/ProviderStore（供应商配置持�
 | 工具实现 | `tools/TextTools.kt` · `NumberTools.kt` · `MiscTools.kt` | 10 个本地工具 | **加工具只动这里** |
 | 网络 | `data/LlmClient.kt` | chat + listModels 两个方法、错误码→中文文案 | 换协议加新方法或新文件，不改调用方 |
 | 配置存储 | `data/ProviderStore.kt` | Provider 数据类、预设模板、SharedPreferences 持久化 | |
+| 聊天存储 | `data/ChatHistoryStore.kt` | 聊天记录文件持久化与恢复（`filesDir/chat_history.json`，200 条上限） | |
 
 依赖规则：**箭头只能向下**。`data` 不认识 `agent` 和 `ui`；`tools` 不认识 `ChatViewModel`；`ui` 不直接 import `LlmClient`。唯一例外：`ui` 的工具箱目录与直接操作页（ToolRunScreen）可读 `ToolRegistry` 元数据并直接 `execute`（§3 既定路径）。
 
@@ -102,7 +103,6 @@ tools/*（10 个工具实现）         data/ProviderStore（供应商配置持�
 ## §7 已知债务与开放清单（◆ 未裁决 / 未开工）
 
 * ◆ Markdown 渲染（AI 回复里的 `**粗体**` 现在原样显示）→ 归入 UI 重做。
-* ◆ 流式输出（SSE）与「停止生成」按钮。
 * ◆ 二维码识别（要相机/相册权限，第一个带权限的工具，需先立权限纪律）。
 * ◆ 外部数据类工具（天气/快递/汇率）：第一个带第三方 key 的工具，会冲击 C3 的表述，动工前先改契约。
 * ◆ Anthropic 协议 adapter（Claude 系端点）。
@@ -110,7 +110,7 @@ tools/*（10 个工具实现）         data/ProviderStore（供应商配置持�
 
 ## §8 诚实两栏（与仓库保持一致，里程碑时更新）
 
-* **已实现（2026-09-13）**：多供应商配置（URL+Key+拉取模型列表+点选）、10 个本地工具、function calling 循环（自纠重试、6 轮上限）、二维码聊天内嵌、错误中文兜底、模拟器端到端验证（deepseek-flash）、聊天空状态引导、二维码保存/分享、工具直接操作页（表单按 ToolDef 自动生成，不经过 AI）、聊天记录文件持久化（杀进程自动恢复，200 条上限；ToolCall 结果图不跨进程）。
+* **已实现（2026-09-13）**：多供应商配置（URL+Key+拉取模型列表+点选）、10 个本地工具、function calling 循环（自纠重试、6 轮上限）、二维码聊天内嵌、错误中文兜底、模拟器端到端验证（deepseek-flash）、聊天空状态引导、二维码保存/分享、工具直接操作页（表单按 ToolDef 自动生成，不经过 AI）、聊天记录文件持久化（杀进程自动恢复，200 条上限；ToolCall 结果图不跨进程）、SSE 流式输出与「停止生成」（回复逐字上屏，已流出部分保留并标注）。
 * **未实现**：§7 全部。
 
 ---
@@ -122,3 +122,4 @@ tools/*（10 个工具实现）         data/ProviderStore（供应商配置持�
 * v0.1.0 修订（2026-09-13 晚，之二）：聊天空状态首次引导（一句人话 + 3 个示例入口，点按填草稿不代发）；二维码卡片就地「保存到相册 / 分享」；§6 权限清单同步。依据 `docs/UI-UX-设计原则-草案.md` 第二节「待做」。
 * v0.1.0 修订（2026-09-13 晚，之三）：双模式落地——点工具箱卡片从「把示例填进聊天草稿」改为「打开直接操作页」（ToolRunScreen，参数表单按 ToolDef.params 自动生成；图片结果复用 ImageActions）；AI 路径保留在聊天入口与页内「让 AI 来」兜底。§7 移除「工具直接操作页」◆；§2 登记 ui→ToolRegistry 例外。
 * v0.1.0 修订（2026-09-13 晚，之四）：聊天记录持久化——新增 `data/ChatHistoryStore.kt` 写 `filesDir/chat_history.json`（临时文件原子替换，损坏/缺失按空处理），init 恢复 + `items` 单点监听全量重写（IO 线程），上限 200 条；ToolCall 的 result 剔除 `image_base64`，二维码图片不随进程恢复（新取舍）。§6 改写、§7 移除「聊天记录持久化」◆、§8 已实现补充、§4 C4 括号措辞澄清（规则未动）。
+* v0.1.0 修订（2026-09-13 晚，之五）：SSE 流式输出——`LlmClient.chatStream`（`stream:true`、逐行 `data:`/`[DONE]` 解析、tool_calls 增量按 index 合并 arguments），Agent 循环改走流式：首个 content delta 即上屏并就地更新，工具轮内容不上屏、完整 tool_calls 走原执行路径（MAX_ROUNDS 与 tool_call_id 配对不变）。「停止生成」：ViewModel 持有 Job+OkHttp Call，`stop()` 双重取消，已流出文本保留并追加「（已停止）」，busy 复位。发送按钮在忙时切换为「停止」。§1 移除已完成三项（持久化/流式/取消）、§2 补 ChatHistoryStore、§7 移除对应 ◆。
